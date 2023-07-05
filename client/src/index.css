@@ -1,0 +1,35 @@
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@700&family=Roboto&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Roboto", sans-serif;
+}
+
+a {
+  text-decoration: none;
+}
+
+html {
+  width: 100%;
+  height: 100%;
+  overflow-y: scroll;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(#ED1B24, .1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ED1B24;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #ED1B24;
+}

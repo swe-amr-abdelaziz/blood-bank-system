@@ -1,0 +1,42 @@
+{
+  "name": "blood_bank_system",
+  "version": "1.0.0",
+  "description": "The Central Blood Bank Management System is a software solution designed to efficiently manage the processes involved in blood donation, stock management, and allocation to hospitals. This system aims to streamline the blood management process, enhance donor registration, ensure timely allocation of blood to hospitals, and improve overall efficiency in the blood supply chain.",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "prod": "NODE_ENV=production node server.js",
+    "seed": "node core/seeders/seedAll.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "blood",
+    "bank",
+    "system",
+    "stock",
+    "hospital",
+    "donor",
+    "supply",
+    "central"
+  ],
+  "author": "Amr Abdelaziz",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-async-handler": "^1.2.0",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.3.1",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.3"
+  },
+  "devDependencies": {
+    "eslint": "^8.43.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.27.5"
+  }
+}
