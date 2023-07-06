@@ -89,26 +89,64 @@ const getNearestCityWithSufficientStock = (stock, amount) => (
   stock.find((donation) => donation.count >= amount)
 );
 
-const sendBloodRequest = async (request, targetCity) => {
+const sendBloodRequest = async (bloodRequest, targetCity) => {
   const result = await StockSchema.find({
-    group: request.body.bloodGroup,
+    group: bloodRequest.group,
     bloodBankCity: targetCity.id,
     hospitalRequested: null,
   })
     .sort({ expirationDate: 1 })
-    .limit(request.body.amount);
+    .limit(bloodRequest.amount);
 
   const recordIds = result.map((record) => record['_id']);
 
-  const updateResult = await StockSchema.updateMany(
+  await StockSchema.updateMany(
     { _id: { $in: recordIds } },
-    { $set: { hospitalRequested: new mongoose.Types.ObjectId(request.decodedToken.payload.id) } },
+    { $set: { hospitalRequested: new mongoose.Types.ObjectId(bloodRequest.hospital) } },
   );
-
-  console.log(updateResult);
 };
 
-const requestByPatientStatus = async (request, targetCity) => {
+exports.processBloodRequest = async (bloodRequest) => {
+  // Use transactions to avoid multiple requests to access shared resources at the same time
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    // Get amounts of donations for a given blood group
+    let stock = await getStockAmouts(bloodRequest.group);
+
+    // Get coordinates of bloodBankCity
+    const coordinates = await getCoordinates(bloodRequest.city);
+    if (!coordinates) {
+      return 'City not found';
+    }
+
+    // Get array of cities ids sorted by the nearest
+    const cities = await getNearestCities(coordinates);
+
+    // Sort donations array by nearest city by using sorted array of cities
+    stock = sortStockByNearest(stock, cities);
+
+    // Get first city that has sufficient number of donations
+    const targetCity = getNearestCityWithSufficientStock(stock, bloodRequest.amount);
+    if (!targetCity) {
+      return 'There is no sufficient number of donations for this blood group';
+    }
+
+    // Request blood according to patient's status
+    await sendBloodRequest(bloodRequest, targetCity);
+
+    await session.commitTransaction();
+    return null;
+  } catch (error) {
+    await session.abortTransaction();
+    return console.error('Transaction aborted:', error);
+  } finally {
+    session.endSession();
+  }
+};
+
+exports.requestBlood = async (request, response) => {
   /**
    * requestDate is used to delay request up to a specified amount of hours
    * based on patient's status
@@ -133,12 +171,12 @@ const requestByPatientStatus = async (request, targetCity) => {
     default:
       break;
   }
-  console.log(`Wait for ${((requestDate - new Date()) / (1000 * 60 * 60)).toFixed(1)} hours`);
+
   // Save blood request to database
-  await new BloodRequestSchema({
+  const bloodRequest = await new BloodRequestSchema({
     hospital: request.decodedToken.payload.id,
     group: request.body.bloodGroup,
-    quantity: request.body.amount,
+    amount: request.body.amount,
     city: request.body.bloodBankCity,
     patientStatus: request.body.patientStatus,
     serveAt: requestDate,
@@ -146,70 +184,35 @@ const requestByPatientStatus = async (request, targetCity) => {
   }).save();
 
   setTimeout(async () => {
-    await sendBloodRequest(request, targetCity);
+    const errorMessage = await this.processBloodRequest(bloodRequest);
+    if (errorMessage) {
+      await BloodRequestSchema.updateOne(
+        {
+          _id: bloodRequest['_id'],
+        },
+        {
+          $set: {
+            requestStatus: 'Failed',
+            failedReason: errorMessage,
+          },
+        },
+      );
+    }
+    await BloodRequestSchema.updateOne(
+      {
+        _id: bloodRequest['_id'],
+      },
+      {
+        $set: {
+          requestStatus: 'Delivering',
+          failedReason: '',
+        },
+      },
+    );
   }, requestDate - new Date());
-};
 
-exports.requestBlood = async (request, response) => {
-  // Use transactions to avoid multiple requests to access shared resources at the same time
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
-  try {
-    // Get amounts of donations for a given blood group
-    let stock = await getStockAmouts(request.body.bloodGroup);
-    // return response.status(200).json({
-    //   stock,
-    // });
-
-    // Get coordinates of bloodBankCity
-    const coordinates = await getCoordinates(request.body.bloodBankCity);
-    if (!coordinates) {
-      return response.status(404).json({
-        status: 'error',
-        message: 'City not found',
-      });
-    }
-    // return response.status(200).json({
-    //   coordinates,
-    // });
-
-    // Get array of cities ids sorted by the nearest
-    const cities = await getNearestCities(coordinates);
-    // return response.status(200).json({
-    //   cities,
-    // });
-
-    // Sort donations array by nearest city by using sorted array of cities
-    stock = sortStockByNearest(stock, cities);
-    // return response.status(200).json({
-    //   stock,
-    // });
-
-    // Get first city that has sufficient number of donations
-    const targetCity = getNearestCityWithSufficientStock(stock, request.body.amount);
-    if (!targetCity) {
-      return response.status(404).json({
-        status: 'error',
-        message: 'There is no sufficient number of donations for this blood group',
-      });
-    }
-    // return response.status(200).json({
-    //   targetCity,
-    // });
-
-    // Request blood according to patient's status
-    await requestByPatientStatus(request, targetCity);
-
-    await session.commitTransaction();
-    return response.status(201).json({
-      status: 'success',
-      message: 'Blood request sent successfully',
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    return console.error('Transaction aborted:', error);
-  } finally {
-    session.endSession();
-  }
+  return response.status(200).json({
+    status: 'success',
+    message: 'Blood request sent successfully',
+  });
 };

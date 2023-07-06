@@ -12,7 +12,7 @@ const BloodRequestSchema = new mongoose.Schema({
     enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
     required: true,
   },
-  quantity: {
+  amount: {
     type: Number,
     required: true,
     default: 1,
@@ -30,6 +30,10 @@ const BloodRequestSchema = new mongoose.Schema({
     type: String,
     enum: ['Pending', 'Delivering', 'Done', 'Failed'],
     default: 'Pending',
+  },
+  failedReason: {
+    type: String,
+    default: '',
   },
   serveAt: {
     type: Date,

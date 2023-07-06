@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const dbconnection = require('./core/config/database');
 const ApiError = require('./core/utils/apiError');
 const globalError = require('./core/middlewares/errorMW');
+const { servePendingBloodRequests } = require('./controllers/bloodRequestController');
 
 dotenv.config({ path: '.env' });
 
@@ -73,3 +74,8 @@ process.on('unhandledRejection', (error) => {
     process.exit(1);
   });
 });
+
+// Serve pending blood requests
+(function initBloodRequests() {
+  servePendingBloodRequests();
+}());

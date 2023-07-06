@@ -13,6 +13,7 @@ mongoose.connect(process.env.DB_URI, {
     console.log(error);
   });
 
+const bloodRequestSeeder = require('./bloodRequestSeeder');
 const citySeeder = require('./citySeeder');
 const adminSeeder = require('./adminSeeder');
 const hospitalSeeder = require('./hospitalSeeder');
@@ -25,6 +26,9 @@ const pdfSeeder = require('./pdfSeeder');
 
 (async () => {
   try {
+    await bloodRequestSeeder();
+    console.log('Blood Requests seeded successfully');
+
     await citySeeder();
     console.log('Cities seeded successfully');
 
